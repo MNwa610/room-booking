@@ -15,6 +15,6 @@ public class HelloController {
 
     @GetMapping("/hello")
     public String hello(@RequestParam(defaultValue = "гость") String name) {
-        return "Hello, " + name + ". " + roomService.RoomFree() + "!";
+        return "Hello, " + name + ". " + roomService.roomFree() + "!";
     }
 }
