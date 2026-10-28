@@ -7,8 +7,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class HelloController {
 
+    private final RoomService roomService;
+
+    public HelloController(RoomService roomService) {
+        this.roomService = roomService;
+    }
+
     @GetMapping("/hello")
     public String hello(@RequestParam(defaultValue = "гость") String name) {
-        return "Hello, " + name + "!";
+        return "Hello, " + name + ". " + roomService.RoomFree() + "!";
     }
 }
