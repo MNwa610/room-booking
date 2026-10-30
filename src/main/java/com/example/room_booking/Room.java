@@ -1,7 +1,16 @@
 package com.example.room_booking;
 
-public class Room {
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import org.springframework.data.jpa.repository.JpaRepository;
 
+
+@Entity
+public class Room {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String name;
 
@@ -29,3 +38,4 @@ public class Room {
         this.name = name;
     }
 }
+

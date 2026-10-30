@@ -8,20 +8,21 @@ import java.util.List;
 @Service
 public class RoomService {
 
-    private final List<Room> rooms = new ArrayList<>();
-    private long nextId = 1;
+    private final RoomRepository roomRepository;
+
+    public RoomService(RoomRepository roomRepository) {
+        this.roomRepository = roomRepository;
+    }
 
     public String roomFree() {
         return "комната свободна";
     }
 
     public List<Room> findAll() {
-        return rooms;
+        return roomRepository.findAll();
     }
 
-    public Room add(Room room) {
-        room.setId(nextId++);
-        rooms.add(room);
-        return room;
+    public Room add(String name) {
+        return  roomRepository.save(new Room(null, name));
     }
 }

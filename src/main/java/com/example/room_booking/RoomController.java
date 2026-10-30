@@ -24,7 +24,7 @@ public class RoomController {
     }
 
     @PostMapping
-    public Room add(@RequestBody Room room) {
-        return roomService.add(room);
+    public Room add(@RequestBody String name) {
+        return roomService.add(name);
     }
 }
