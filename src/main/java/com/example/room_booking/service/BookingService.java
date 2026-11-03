@@ -1,5 +1,11 @@
-package com.example.room_booking;
+package com.example.room_booking.service;
 
+import com.example.room_booking.entity.Booking;
+import com.example.room_booking.exception.BookingConflictException;
+import com.example.room_booking.dto.BookingRequest;
+import com.example.room_booking.repository.BookingRepository;
+import com.example.room_booking.repository.RoomRepository;
+import com.example.room_booking.entity.Room;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,7 +25,7 @@ public class BookingService {
         }
 
         Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new IllegalArgumentException("Комната не найдена: " + request.getRoomId()));
+                .orElseThrow(() -> new RoomNotFoundException(request.getRoomId()));
 
         boolean conflict = bookingRepository.existsByRoomIdAndStartTimeLessThanAndEndTimeGreaterThan(
                 request.getRoomId(), request.getEndTime(), request.getStartTime());
@@ -29,5 +35,11 @@ public class BookingService {
 
         Booking booking = new Booking(room, request.getStartTime(), request.getEndTime());
         return bookingRepository.save(booking);
+    }
+
+    public static class RoomNotFoundException extends RuntimeException {
+        public RoomNotFoundException(Long id) {
+            super("Комната не найдена: " + id);
+        }
     }
 }

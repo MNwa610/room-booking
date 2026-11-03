@@ -1,5 +1,6 @@
-package com.example.room_booking;
+package com.example.room_booking.controller;
 
+import com.example.room_booking.service.RoomService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;

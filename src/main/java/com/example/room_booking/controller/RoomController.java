@@ -1,5 +1,9 @@
-package com.example.room_booking;
+package com.example.room_booking.controller;
 
+import com.example.room_booking.entity.Room;
+import com.example.room_booking.dto.RoomRequest;
+import com.example.room_booking.service.RoomService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,7 +28,7 @@ public class RoomController {
     }
 
     @PostMapping
-    public Room add(@RequestBody String name) {
-        return roomService.add(name);
+    public Room add(@Valid @RequestBody RoomRequest roomRequest) {
+        return roomService.add(roomRequest);
     }
 }

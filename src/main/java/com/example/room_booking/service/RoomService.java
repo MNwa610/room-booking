@@ -1,8 +1,10 @@
-package com.example.room_booking;
+package com.example.room_booking.service;
 
+import com.example.room_booking.repository.RoomRepository;
+import com.example.room_booking.entity.Room;
+import com.example.room_booking.dto.RoomRequest;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -22,7 +24,7 @@ public class RoomService {
         return roomRepository.findAll();
     }
 
-    public Room add(String name) {
-        return  roomRepository.save(new Room(null, name));
+    public Room add(RoomRequest roomRequest) {
+        return  roomRepository.save(new Room(null, roomRequest.getName()));
     }
 }

@@ -1,11 +1,18 @@
-package com.example.room_booking;
+package com.example.room_booking.dto;
+
+import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDateTime;
 
 public class BookingRequest {
 
+    @NotNull
     private Long roomId;
+
+    @NotNull
     private LocalDateTime startTime;
+
+    @NotNull
     private LocalDateTime endTime;
 
     public BookingRequest() {
