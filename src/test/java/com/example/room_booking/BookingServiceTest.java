@@ -4,6 +4,7 @@ import com.example.room_booking.dto.BookingRequest;
 import com.example.room_booking.entity.Booking;
 import com.example.room_booking.entity.Room;
 import com.example.room_booking.exception.BookingConflictException;
+import com.example.room_booking.exception.RoomNotFoundException;
 import com.example.room_booking.repository.BookingRepository;
 import com.example.room_booking.repository.RoomRepository;
 import com.example.room_booking.service.BookingService;
@@ -45,7 +46,7 @@ class BookingServiceTest {
     @Test
     void createsBookingWhenRoomIsFree() {
         Room room = new Room(1L, "Переговорка 1");
-        when(roomRepository.findById(1L)).thenReturn(Optional.of(room));
+        when(roomRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(room));
         when(bookingRepository.existsByRoomIdAndStartTimeLessThanAndEndTimeGreaterThan(
                 anyLong(), any(), any())).thenReturn(false);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -58,7 +59,8 @@ class BookingServiceTest {
 
     @Test
     void throwsConflictWhenRoomIsBusy() {
-        when(roomRepository.findById(1L)).thenReturn(Optional.of(new Room(1L, "Переговорка 1")));
+        Room room = new Room(1L, "Переговорка 1");
+        when(roomRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(room));
         when(bookingRepository.existsByRoomIdAndStartTimeLessThanAndEndTimeGreaterThan(
                 anyLong(), any(), any())).thenReturn(true);
 
@@ -69,9 +71,9 @@ class BookingServiceTest {
 
     @Test
     void throwsNotFoundWhenRoomDoesNotExist() {
-        when(roomRepository.findById(1L)).thenReturn(Optional.empty());
+        when(roomRepository.findByIdForUpdate(1L)).thenReturn(Optional.empty());
 
-        assertThrows(BookingService.RoomNotFoundException.class, () -> bookingService.create(
+        assertThrows(RoomNotFoundException.class, () -> bookingService.create(
                 request(LocalDateTime.of(2026, 11, 3, 10, 0), LocalDateTime.of(2026, 11, 3, 11, 0))));
     }
 
