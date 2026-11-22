@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Переговорные · Room Booking</title>
+    <link rel="stylesheet" href="floor.css">
+    <script src="floor.js" defer></script>
+</head>
+<body>
+<header class="topbar"><span class="brand"><i aria-hidden="true">◩</i> Room Booking</span><span class="nav-label">Карта офиса</span></header>
+<main>
+    <h1>Карта офиса<span>.</span></h1>
+    <form id="interval-form" class="panel">
+        <fieldset id="interval-fields">
+            <legend>Время бронирования</legend>
+            <div id="week" class="week" role="group" aria-label="Ближайшие семь дней"></div>
+            <div class="interval">
+                <label>Дата<input type="date" id="date" required></label>
+                <label>Начало<input type="time" id="start" value="10:00" required></label>
+                <label>Конец<input type="time" id="end" value="11:00" required></label>
+                <button type="submit" class="secondary">Проверить доступность</button>
+            </div>
+        </fieldset>
+    </form>
+    <div class="workspace">
+        <section class="panel map-panel" aria-labelledby="floor-title">
+            <div class="map-header">
+                <h2 id="floor-title">Этаж 01</h2>
+                <ul class="legend" aria-label="Обозначения">
+                    <li><span class="dot free"></span>Свободна</li>
+                    <li><span class="dot busy"></span>Занята</li>
+                </ul>
+            </div>
+            <label class="desk-toggle"><input id="show-desks" type="checkbox"> Подсветить рабочие места</label>
+            <div class="map-scroll" tabindex="0" aria-label="Схема офиса"><div class="floor"><img src="office.svg" alt="Три переговорные вдоль коридора. Напротив — рабочие столы с компьютерами и лаунж.">
+                <span class="desk-highlight" aria-hidden="true"></span>
+                <button class="room atlas" type="button" data-room="Атлас" aria-pressed="false" disabled>
+                    
+                    <strong>Атлас</strong>
+                    <span class="room-status">Нет данных</span>
+                </button>
+                <button class="room meridian" type="button" data-room="Меридиан" aria-pressed="false" disabled>
+                    
+                    <strong>Меридиан</strong>
+                    <span class="room-status">Нет данных</span>
+                </button>
+
+                <button class="room horizon" type="button" data-room="Горизонт" aria-pressed="false" disabled>
+                    
+                    <strong>Горизонт</strong>
+                    <span class="room-status">Нет данных</span>
+                </button>
+                </div>
+            </div>
+            <p id="availability-status" role="status"></p>
+        </section>
+        <section class="panel details" aria-labelledby="room-title">
+            <span class="caption">Бронирование</span>
+            <h2 id="room-title">Выбери комнату</h2>
+            <p id="room-details">Нажми на переговорную на плане.</p>
+            <button class="primary" id="book" type="button" disabled>Забронировать</button>
+            <p id="booking-status" role="status"></p>
+        </section>
+    </div>
+</main>
+</body>
+</html>
