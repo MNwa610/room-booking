@@ -20,6 +20,28 @@ let checkedInterval = null;
 let availabilityRequest = 0;
 let bookingInProgress = false;
 
+const purpose = document.querySelector('#purpose');
+let detailsVersion = 0;
+
+async function showOccupancy(room) {
+    const version = ++detailsVersion;
+    const container = document.querySelector('#occupancy');
+    container.replaceChildren();
+    if (!room || room.available || !checkedInterval) return;
+    if (!employee) {
+        container.textContent = 'Войди, чтобы увидеть отдел и цель встречи.';
+        return;
+    }
+    try {
+        const query = new URLSearchParams({roomId: room.roomId, ...checkedInterval});
+        const meetings = await accountRequest('bookings/room?' + query);
+        if (version !== detailsVersion) return;
+        for (const meeting of meetings) container.append(meetingItem(meeting));
+    } catch (error) {
+        if (version === detailsVersion) container.textContent = error.message;
+    }
+}
+
 function renderRooms() {
     for (const button of roomButtons) {
         const room = rooms.get(button.dataset.room);
@@ -36,6 +58,9 @@ function renderRooms() {
     roomDetails.textContent = selected
         ? (selected.available ? 'Свободна на выбранное время.' : 'Занята на выбранное время.')
         : 'Нажми на переговорную на плане.';
+    document.querySelector('#purpose-field').hidden = !selected?.available || !employee;
+    book.textContent = employee ? 'Забронировать' : 'Войти для бронирования';
+    showOccupancy(selected);
     book.disabled = !selected?.available || !checkedInterval || bookingInProgress;
 }
 
@@ -110,6 +135,12 @@ book.addEventListener('click', async () => {
     const room = rooms.get(selectedName);
     if (bookingInProgress || !room?.available || !checkedInterval) return;
 
+    if (!employee) { openAccount(); return; }
+    if (!purpose.value.trim()) {
+        bookingStatus.textContent = 'Укажи цель встречи.';
+        purpose.setAttribute('aria-invalid', 'true');
+        return;
+    }
     bookingInProgress = true;
     fields.disabled = true;
     bookingStatus.textContent = 'Создаём бронь…';
@@ -118,11 +149,15 @@ book.addEventListener('click', async () => {
         const response = await fetch('bookings', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({roomId: room.roomId, ...checkedInterval}),
+            body: JSON.stringify({roomId: room.roomId, purpose: purpose.value.trim(), ...checkedInterval}),
         });
 
         if (response.ok) {
+            purpose.value = '';
             bookingStatus.textContent = 'Готово, комната забронирована.';
+        } else if (response.status === 401) {
+            setEmployee(null);
+            openAccount();
         } else if (response.status === 409) {
             bookingStatus.textContent = 'Комнату уже заняли. Выбери другую комнату или время.';
         } else {
@@ -168,3 +203,54 @@ date.addEventListener('input', () => {
 });
 
 checkAvailability();
+
+window.addEventListener("account-change", renderRooms);
+
+purpose.addEventListener('input', () => purpose.removeAttribute('aria-invalid'));
+const mapViewport = document.querySelector('.map-scroll');
+const floorPlan = document.querySelector('.floor');
+const zoomIn = document.querySelector('#zoom-in');
+const zoomOut = document.querySelector('#zoom-out');
+let zoom = 1;
+function setMapZoom(value, anchorX, anchorY, clientX, clientY) {
+    zoom = Math.max(1, Math.min(3, value));
+    floorPlan.style.width = zoom * 100 + '%';
+    const bounds = floorPlan.getBoundingClientRect();
+    mapViewport.scrollLeft += bounds.left + bounds.width * anchorX - clientX;
+    mapViewport.scrollTop += bounds.top + bounds.height * anchorY - clientY;
+    zoomOut.disabled = zoom === 1;
+    zoomIn.disabled = zoom === 3;
+}
+
+function mapAnchor(x, y) {
+    const bounds = floorPlan.getBoundingClientRect();
+    return [(x - bounds.left) / bounds.width, (y - bounds.top) / bounds.height];
+}
+
+function changeZoom(delta) {
+    const bounds = mapViewport.getBoundingClientRect();
+    const x = bounds.left + bounds.width / 2;
+    const y = bounds.top + bounds.height / 2;
+    setMapZoom(zoom + delta, ...mapAnchor(x, y), x, y);
+}
+zoomIn.onclick = () => changeZoom(.5);
+zoomOut.onclick = () => changeZoom(-.5);
+
+let pinch = null;
+function trackPinch(event) {
+    if (event.touches.length !== 2) {
+        pinch = null;
+        return;
+    }
+    event.preventDefault();
+    const [a, b] = event.touches;
+    const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (!distance) return;
+    const x = (a.clientX + b.clientX) / 2;
+    const y = (a.clientY + b.clientY) / 2;
+    if (!pinch) pinch = {distance, zoom, anchor: mapAnchor(x, y)};
+    setMapZoom(pinch.zoom * distance / pinch.distance, ...pinch.anchor, x, y);
+}
+for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+    mapViewport.addEventListener(type, trackPinch, {passive: false});
+}

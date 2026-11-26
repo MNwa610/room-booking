@@ -13,6 +13,37 @@ public class Booking {
     @ManyToOne
     private Room room;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Employee organizer;
+    private String department;
+    private String purpose;
+    private LocalDateTime cancelledAt;
+
+    public LocalDateTime getCancelledAt() { return cancelledAt; }
+
+    public void cancel() {
+        if (cancelledAt == null) cancelledAt = LocalDateTime.now();
+    }
+
+    public void assign(Employee organizer, String purpose) {
+        this.organizer = organizer;
+        this.department = organizer.getDepartment();
+        this.purpose = purpose.strip();
+    }
+
+    public boolean ownedBy(Employee employee) {
+        return organizer != null && organizer.getId().equals(employee.getId());
+    }
+
+    public void reschedule(LocalDateTime start, LocalDateTime end, String purpose) {
+        this.startTime = start;
+        this.endTime = end;
+        this.purpose = purpose.strip();
+    }
+
+    public String getDepartment() { return department; }
+    public String getPurpose() { return purpose; }
+
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 

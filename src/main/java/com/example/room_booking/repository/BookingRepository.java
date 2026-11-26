@@ -10,12 +10,23 @@ import java.util.Set;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
 
-    boolean existsByRoomIdAndStartTimeLessThanAndEndTimeGreaterThan(
+    java.util.List<Booking> findByOrganizerIdOrderByStartTimeAsc(Long id);
+
+    java.util.List<Booking> findByRoomIdAndCancelledAtIsNullAndStartTimeLessThanAndEndTimeGreaterThanOrderByStartTimeAsc(
             Long roomId, LocalDateTime end, LocalDateTime start);
+
+    boolean existsByRoomIdAndCancelledAtIsNullAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long roomId, LocalDateTime end, LocalDateTime start);
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    java.util.Optional<Booking> findByIdAndOrganizerId(Long id, Long organizerId);
+
+    boolean existsByRoomIdAndIdNotAndCancelledAtIsNullAndStartTimeLessThanAndEndTimeGreaterThan(
+            Long roomId, Long excludedId, LocalDateTime end, LocalDateTime start);
 
     @Query("""
             select distinct b.room.id from Booking b
-            where b.startTime < :endTime and b.endTime > :startTime
+            where b.cancelledAt is null and b.startTime < :endTime and b.endTime > :startTime
             """)
     Set<Long> findOccupiedRoomIds(@Param("startTime") LocalDateTime startTime,
                                   @Param("endTime") LocalDateTime endTime);

@@ -15,6 +15,13 @@ public class BookingRequest {
     @NotNull
     private LocalDateTime endTime;
 
+    @jakarta.validation.constraints.NotBlank
+    @jakarta.validation.constraints.Size(max = 200)
+    private String purpose;
+
+    public String getPurpose() { return purpose; }
+    public void setPurpose(String purpose) { this.purpose = purpose; }
+
     public BookingRequest() {
     }
 

@@ -38,20 +38,26 @@ class BookingServiceTest {
     private BookingRequest request(LocalDateTime start, LocalDateTime end) {
         BookingRequest r = new BookingRequest();
         r.setRoomId(1L);
+        r.setPurpose("Планирование");
         r.setStartTime(start);
         r.setEndTime(end);
         return r;
+    }
+
+    private Booking create(BookingRequest input) {
+        return bookingService.create(input, new com.example.room_booking.entity.Employee(
+                "test@example.org", "Анна", "ИТ", "unused"));
     }
 
     @Test
     void createsBookingWhenRoomIsFree() {
         Room room = new Room(1L, "Переговорка 1");
         when(roomRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(room));
-        when(bookingRepository.existsByRoomIdAndStartTimeLessThanAndEndTimeGreaterThan(
+        when(bookingRepository.existsByRoomIdAndCancelledAtIsNullAndStartTimeLessThanAndEndTimeGreaterThan(
                 anyLong(), any(), any())).thenReturn(false);
         when(bookingRepository.save(any(Booking.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Booking result = bookingService.create(
+        Booking result = create(
                 request(LocalDateTime.of(2026, 11, 3, 10, 0), LocalDateTime.of(2026, 11, 3, 11, 0)));
 
         assertSame(room, result.getRoom());
@@ -61,10 +67,10 @@ class BookingServiceTest {
     void throwsConflictWhenRoomIsBusy() {
         Room room = new Room(1L, "Переговорка 1");
         when(roomRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(room));
-        when(bookingRepository.existsByRoomIdAndStartTimeLessThanAndEndTimeGreaterThan(
+        when(bookingRepository.existsByRoomIdAndCancelledAtIsNullAndStartTimeLessThanAndEndTimeGreaterThan(
                 anyLong(), any(), any())).thenReturn(true);
 
-        assertThrows(BookingConflictException.class, () -> bookingService.create(
+        assertThrows(BookingConflictException.class, () -> create(
                 request(LocalDateTime.of(2026, 11, 3, 10, 30), LocalDateTime.of(2026, 11, 3, 11, 30))));
         verify(bookingRepository, never()).save(any());
     }
@@ -73,13 +79,13 @@ class BookingServiceTest {
     void throwsNotFoundWhenRoomDoesNotExist() {
         when(roomRepository.findByIdForUpdate(1L)).thenReturn(Optional.empty());
 
-        assertThrows(RoomNotFoundException.class, () -> bookingService.create(
+        assertThrows(RoomNotFoundException.class, () -> create(
                 request(LocalDateTime.of(2026, 11, 3, 10, 0), LocalDateTime.of(2026, 11, 3, 11, 0))));
     }
 
     @Test
     void rejectsEndBeforeStart() {
-        assertThrows(IllegalArgumentException.class, () -> bookingService.create(
+        assertThrows(IllegalArgumentException.class, () -> create(
                 request(LocalDateTime.of(2026, 11, 3, 11, 0), LocalDateTime.of(2026, 11, 3, 10, 0))));
     }
 }

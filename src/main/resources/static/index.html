@@ -3,14 +3,26 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Переговорные · Room Booking</title>
-    <link rel="stylesheet" href="floor.css">
-    <script src="floor.js" defer></script>
+    <title>Переговорные · Бюро</title>
+    <link rel="stylesheet" href="floor.css?v=bureau-8">
+    <script src="account.js?v=bureau-8" defer></script>
+    <script src="floor.js?v=bureau-8" defer></script>
 </head>
 <body>
-<header class="topbar"><span class="brand"><i aria-hidden="true">◩</i> Room Booking</span><span class="nav-label">Карта офиса</span></header>
+<header class="topbar"><span class="brand"><span class="glass-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m3 8 9-5 9 5-9 5zM3 12l9 5 9-5M3 16l9 5 9-5"/></svg></span> Бюро</span><span class="nav-label">Карта офиса</span>
+    <div class="account-actions">
+        <button id="login-open" class="account-link" type="button" aria-haspopup="dialog">
+            Войти
+        </button>
+        <button id="profile-open" class="account-link" type="button" aria-label="Мой профиль" aria-haspopup="dialog" hidden>
+            <img id="header-avatar" alt="" hidden>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M4.5 20c.6-4 3.3-6 7.5-6s6.9 2 7.5 6"/></svg>
+        </button>
+    </div>
+</header>
 <main>
-    <h1>Карта офиса<span>.</span></h1>
+    <section class="hero" aria-labelledby="map-title">
+    <h1 id="map-title">Карта офиса<span>.</span></h1>
     <form id="interval-form" class="panel">
         <fieldset id="interval-fields">
             <legend>Время бронирования</legend>
@@ -23,17 +35,23 @@
             </div>
         </fieldset>
     </form>
+    </section>
     <div class="workspace">
         <section class="panel map-panel" aria-labelledby="floor-title">
             <div class="map-header">
-                <h2 id="floor-title">Этаж 01</h2>
+                <h2 id="floor-title"><span class="glass-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="m3 5 6-2 6 3 6-2v15l-6 2-6-3-6 2zM9 3v15m6-12v15"/></svg></span>Этаж 01</h2>
                 <ul class="legend" aria-label="Обозначения">
                     <li><span class="dot free"></span>Свободна</li>
                     <li><span class="dot busy"></span>Занята</li>
                 </ul>
             </div>
-            <label class="desk-toggle"><input id="show-desks" type="checkbox"> Подсветить рабочие места</label>
-            <div class="map-scroll" tabindex="0" aria-label="Схема офиса"><div class="floor"><img src="office.svg" alt="Три переговорные вдоль коридора. Напротив — рабочие столы с компьютерами и лаунж.">
+            <div class="map-tools"><label class="desk-toggle"><input id="show-desks" type="checkbox"> Подсветить рабочие места</label>
+                <div class="zoom-tools" role="group" aria-label="Масштаб карты">
+                    <button id="zoom-out" type="button" aria-label="Уменьшить карту" disabled>−</button>
+                    <button id="zoom-in" type="button" aria-label="Увеличить карту">+</button>
+                </div>
+            </div>
+            <div class="map-scroll" tabindex="0" aria-label="Схема офиса"><div class="floor"><img src="office.svg?v=glass-1" alt="Три переговорные вдоль коридора. Напротив — рабочие столы с компьютерами и лаунж.">
                 <span class="desk-highlight" aria-hidden="true"></span>
                 <button class="room atlas" type="button" data-room="Атлас" aria-pressed="false" disabled>
                     
@@ -56,13 +74,89 @@
             <p id="availability-status" role="status"></p>
         </section>
         <section class="panel details" aria-labelledby="room-title">
-            <span class="caption">Бронирование</span>
+            <span class="caption"><span class="glass-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4" y="5" width="16" height="16" rx="3"/><path d="M4 10h16M8 3v4m8-4v4m-9 7h3m2 0h3"/></svg></span>Бронирование</span>
             <h2 id="room-title">Выбери комнату</h2>
             <p id="room-details">Нажми на переговорную на плане.</p>
+            <div id="occupancy"></div>
+            <label id="purpose-field" hidden>Цель встречи<input id="purpose" maxlength="200" placeholder="Например, планирование спринта"></label>
             <button class="primary" id="book" type="button" disabled>Забронировать</button>
             <p id="booking-status" role="status"></p>
         </section>
     </div>
 </main>
+<dialog id="account-dialog" aria-labelledby="account-heading">
+    <div class="dialog-panel">
+    <button class="close-dialog" type="button" aria-label="Закрыть">×</button>
+    <h2 tabindex="-1" autofocus id="account-heading">Аккаунт сотрудника</h2>
+    <div id="auth-modes" role="group" aria-label="Доступ к аккаунту">
+        <button type="button" data-mode="login" aria-pressed="true">Вход</button>
+        <button type="button" data-mode="register" aria-pressed="false">Регистрация</button>
+    </div>
+    <form id="account-form" novalidate>
+        <label>Рабочая почта<input name="email" type="email" autocomplete="username" maxlength="200" required aria-describedby="email-error"><small class="field-error" id="email-error"></small></label>
+        <label id="password-label">Пароль<input name="password" type="password" maxlength="128" required aria-describedby="password-error"><small class="field-error" id="password-error"></small></label>
+        <div id="employee-fields" inert><div class="employee-fields-inner">
+            <label id="name-label">Имя<input name="name" autocomplete="name" maxlength="80" required aria-describedby="name-error"><small class="field-error" id="name-error"></small></label>
+            <div class="department-field">
+            <span>Отдел</span>
+            <details class="department-picker">
+                <summary aria-label="Отдел: выбери отдел" aria-describedby="department-error"><span>Выбери отдел</span></summary>
+                <div class="department-menu" role="group" aria-label="Отделы"></div>
+            </details>
+            <input type="hidden" name="department" id="departments"><small class="field-error" id="department-error"></small>
+        </div>
+        </div></div>
+        <button class="account-link coral-glass" id="account-submit">Войти</button>
+    </form>
+    <p role="status" id="account-message"></p>
+    </div>
+</dialog>
+<dialog id="profile-dialog" aria-labelledby="profile-heading">
+    <div class="dialog-panel">
+    <button class="close-dialog" type="button" aria-label="Закрыть">×</button>
+    <h2 tabindex="-1" autofocus id="profile-heading">Мой профиль</h2>
+    <form id="profile-form">
+        <div class="avatar-row">
+            <span id="avatar-preview" aria-hidden="true"></span>
+            <button class="account-link" id="choose-avatar" type="button">Выбрать фото</button>
+            <input id="avatar-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <button class="account-link" id="remove-avatar" type="button" hidden>Убрать</button>
+        </div>
+        <label>Имя<input name="name" required maxlength="80" autocomplete="name" pattern=".*[^ ].*"></label>
+        <label>Рабочая почта<input name="email" readonly></label>
+        <div class="department-field">
+            <span>Отдел</span>
+            <details class="department-picker">
+                <summary aria-label="Отдел: выбери отдел"><span>Выбери отдел</span></summary>
+                <div class="department-menu" role="group" aria-label="Отделы"></div>
+            </details>
+            <input type="hidden" name="department">
+        </div>
+        <button class="account-link" type="submit">Сохранить изменения</button>
+    </form>
+    <p id="profile-message" role="status"></p>
+    <section id="my-meetings">
+        <h3>Предстоящие встречи</h3><ul id="upcoming"></ul>
+        <h3>История встреч</h3><ul id="history"></ul>
+        <button class="account-link" id="logout" type="button">Выйти из аккаунта</button>
+    </section>
+    </div>
+</dialog>
+<dialog id="meeting-dialog" aria-labelledby="meeting-heading">
+    <div class="dialog-panel">
+    <button class="close-dialog" type="button" aria-label="Закрыть">×</button>
+    <h2 id="meeting-heading" tabindex="-1" autofocus></h2>
+    <p id="meeting-summary"></p>
+    <form id="meeting-form">
+        <fieldset id="meeting-fields">
+            <label>Цель встречи<input name="purpose" maxlength="200" required></label>
+            <label>Начало<input name="startTime" type="datetime-local" step="any" required></label>
+            <label>Окончание<input name="endTime" type="datetime-local" step="any" required></label>
+        </fieldset>
+        <button class="account-link" type="submit"></button>
+    </form>
+    <p id="meeting-message" role="status"></p>
+    </div>
+</dialog>
 </body>
 </html>
