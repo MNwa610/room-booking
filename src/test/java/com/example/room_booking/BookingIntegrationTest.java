@@ -133,7 +133,18 @@ class BookingIntegrationTest {
 
         mockMvc.perform(get("/rooms"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Переговорка 1"));
+                .andExpect(jsonPath("$[?(@.name == 'Переговорка 1')]").isNotEmpty());
+    }
+
+    @Test
+    void floorRoomsAreAvailableOnOrdinaryStartup() throws Exception {
+        var result = mockMvc.perform(get("/rooms/availability")
+                .param("startTime", "2030-06-01T10:00").param("endTime", "2030-06-01T11:00"))
+                .andExpect(status().isOk());
+        for (String name : java.util.List.of("Атлас", "Меридиан", "Горизонт", "Студия", "Библиотека")) {
+            result.andExpect(jsonPath("$[?(@.name == '%s' && @.available == true)]".formatted(name))
+                    .value(org.hamcrest.Matchers.hasSize(1)));
+        }
     }
 
     @Test

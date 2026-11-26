@@ -2,26 +2,77 @@
 (() => {
     const dialog = document.querySelector('#office-view');
     const canvas = dialog.querySelector('canvas');
-    const seatButton = document.querySelector('#office-seat');
+    const entryButton = document.querySelector('#office-entry');
+    const markers = dialog.querySelector('.seat-markers');
+    const stage = dialog.querySelector('.office-stage');
+    let places = [];
     const hint = dialog.querySelector('footer span');
     let office, loading;
     const layouts = {
-        'Атлас': {table: 2.7, plant: -3.1, accent: '#a96349'},
-        'Меридиан': {table: 2.16, plant: -3.1, accent: '#54776e'},
-        'Горизонт': {table: 3.24, plant: 3.1, accent: '#5d728b'}
+        'Атлас': {style: 'presentation', table: 2.7, plant: -3.1, accent: '#a96349'},
+        'Меридиан': {style: 'workshop', table: 2.16, plant: -3.1, accent: '#54776e'},
+        'Горизонт': {style: 'lounge', table: 3.24, plant: 3.1, accent: '#5d728b'},
+        'Студия': {style: 'studio', table: 3.05, plant: 3.1, accent: '#977046'},
+        'Библиотека': {style: 'library', table: 1.8, plant: -3.1, accent: '#66765e'}
     };
     let eye, yaw, pitch, seated, currentRoom, frame, drag;
     const clamp = (x, low, high) => Math.max(low, Math.min(high, x));
-    function draw() {
+    let travel = null;
+    const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+    function draw(time) {
         frame = 0;
-        if (office && eye && dialog.open) office.render(eye,yaw,pitch);
+        if (!office || !eye || !dialog.open) return;
+        if (travel) {
+            travel.start ??= time;
+            const t = reducedMotion.matches ? 1 : clamp((time-travel.start)/travel.duration, 0, 1);
+            const progress = t*t*(3-2*t);
+            eye = travel.origin.map((value, i) => value + (travel.target[i]-value)*progress);
+            if (travel.turn) {
+                yaw = travel.initialYaw + travel.yawDelta*progress;
+                pitch = travel.initialPitch + (travel.targetPitch-travel.initialPitch)*progress;
+            }
+            if (t === 1) travel = null;
+        }
+        office.render(eye,yaw,pitch);
+        if (travel) {
+            redraw();
+            return;
+        }
+        markers.hidden = false;
+        places.forEach((place,index) => {
+            const marker = markers.children[index];
+            const point = place === seated ? null : office.projectSeat(place);
+            marker.hidden = !point;
+            if (point) {
+                marker.style.left = point.left+'%';
+                marker.style.top = point.top+'%';
+            }
+        });
     }
     function redraw(){ if(!frame) frame=requestAnimationFrame(draw); }
-    function viewpoint(atSeat){
-        seated=atSeat;
-        eye=seated?[layouts[currentRoom].table*.29,1.18,.29]:[2.48,1.58,1.54];
-        yaw=seated?-.17:-.86; pitch=seated?-.14:-.22;
-        seatButton.textContent=seated?'Вид от входа':'Вид с места';
+    function viewpoint(place, animate = true){
+        seated = place;
+        const target = place ? place.eye : [2.48,1.58,1.54];
+        const targetYaw = place ? place.yaw : -.86;
+        const targetPitch = place ? -.17 : -.22;
+        if (animate && eye && !reducedMotion.matches) {
+            const distance = Math.hypot(...target.map((value,i) => value-eye[i]));
+            const angle = targetYaw-yaw;
+            travel = {
+                origin:eye, target, initialYaw:yaw, initialPitch:pitch, targetPitch,
+                yawDelta:Math.atan2(Math.sin(angle),Math.cos(angle)), turn:true,
+                duration:clamp(550 + distance*130,650,1150)
+            };
+            markers.hidden = true;
+        } else {
+            travel = null;
+            eye = target;
+            yaw = targetYaw;
+            pitch = targetPitch;
+        }
+        entryButton.hidden = !place;
+        canvas.focus({preventScroll:true});
         redraw();
     }
     async function openRoom(name){
@@ -29,17 +80,28 @@
         currentRoom=name;
         document.querySelector('#office-name').textContent=name+' · 3D';
         hint.textContent='Загружаем переговорную…';
-        seatButton.disabled = true;
+        places = [];
+        markers.replaceChildren();
+        entryButton.hidden = true;
         dialog.showModal();
         try {
-            loading ??= import('./office-scene.js?v=2').then(module => module.createOffice(canvas));
+            loading ??= import('./office-scene.js?v=4').then(module => module.createOffice(canvas));
             office = await loading;
             if(!dialog.open || name!==currentRoom) return;
-            office.configure(layouts[name]);
-            viewpoint(false);
-            seatButton.disabled=false;
-            hint.textContent='Потяни, чтобы осмотреться';
-            canvas.focus({preventScroll:true});
+            places = office.configure(layouts[name]);
+            places.forEach((place,index) => {
+                const marker = document.createElement('button');
+                marker.type = 'button';
+                marker.className = 'seat-marker';
+                marker.hidden = true;
+                marker.setAttribute('aria-label',place.kind+' · место '+(index+1));
+                marker.onclick = event => {
+                    if (!event.detail || !moved) viewpoint(place);
+                };
+                markers.append(marker);
+            });
+            viewpoint(null,false);
+            hint.textContent='Нажми на круг, чтобы сесть. Потяни, чтобы осмотреться.';
         } catch {
             loading=null;
             hint.textContent='Для обзора нужен браузер с поддержкой WebGL 2.';
@@ -77,21 +139,32 @@
     for(const room of roomButtons){
         room.addEventListener('dblclick',()=>openRoom(room.dataset.room));
     }
-    canvas.onpointerdown=e=>{if(!e.isPrimary)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);};
-    canvas.onpointermove=e=>{
-        if(drag?.id!==e.pointerId)return;
-        yaw-=(e.clientX-drag.x)*.006; pitch=clamp(pitch+(e.clientY-drag.y)*.006,-1.32,1.32);
+    let moved = false;
+    stage.onpointerdown = e => {
+        if(!e.isPrimary) return;
+        moved = false;
+        drag = {id:e.pointerId, startX:e.clientX, startY:e.clientY, x:e.clientX, y:e.clientY};
+        e.target.setPointerCapture(e.pointerId);
+    };
+    stage.onpointermove = e => {
+        if(drag?.id!==e.pointerId) return;
+        if(!moved && Math.hypot(e.clientX-drag.startX,e.clientY-drag.startY)<6) return;
+        moved = true;
+        if (travel) travel.turn = false;
+        yaw-=(e.clientX-drag.x)*.006;
+        pitch=clamp(pitch+(e.clientY-drag.y)*.006,-1.32,1.32);
         drag.x=e.clientX;drag.y=e.clientY;redraw();
     };
-    canvas.onlostpointercapture=()=>{drag=null;};
+    stage.onlostpointercapture=()=>{drag=null;};
     canvas.onkeydown=e=>{
         if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;
+        if (travel) travel.turn = false;
         e.preventDefault(); yaw+=(e.key==='ArrowRight')*.1-(e.key==='ArrowLeft')*.1;
         pitch=clamp(pitch+(e.key==='ArrowUp')*.1-(e.key==='ArrowDown')*.1,-1.32,1.32); redraw();
     };
-    seatButton.onclick=()=>viewpoint(!seated);
+    entryButton.onclick=()=>viewpoint(null);
     document.querySelector('#exit-office').onclick=()=>dialog.close();
     dialog.onclick=e=>{if(e.target===dialog)dialog.close();};
-    dialog.onclose=()=>{drag=null;lastTap=null;};
+    dialog.onclose=()=>{drag=null;lastTap=null;travel=null;cancelAnimationFrame(frame);frame=0;};
     new ResizeObserver(redraw).observe(canvas);
 })();

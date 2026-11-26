@@ -45,20 +45,19 @@ async function showOccupancy(room) {
 function renderRooms() {
     for (const button of roomButtons) {
         const room = rooms.get(button.dataset.room);
-        button.disabled = !room || bookingInProgress;
         button.dataset.state = room ? (room.available ? 'free' : 'busy') : 'unknown';
-        button.setAttribute('aria-pressed', Boolean(room && button.dataset.room === selectedName));
+        button.setAttribute('aria-pressed', button.dataset.room === selectedName);
         button.querySelector('.room-status').textContent = room
             ? (room.available ? 'Свободна' : 'Занята')
             : 'Нет данных';
     }
 
     const selected = rooms.get(selectedName);
-    document.querySelector('#view-office').hidden = !selected;
-    roomTitle.textContent = selected?.name ?? 'Выбери комнату';
+    document.querySelector('#view-office').hidden = !selectedName;
+    roomTitle.textContent = selectedName ?? 'Выбери комнату';
     roomDetails.textContent = selected
         ? (selected.available ? 'Свободна на выбранное время.' : 'Занята на выбранное время.')
-        : 'Нажми на переговорную на плане.';
+        : selectedName ? 'Доступность на выбранное время пока неизвестна.' : 'Нажми на переговорную на плане.';
     document.querySelector('#purpose-field').hidden = !selected?.available || !employee;
     book.textContent = employee ? 'Забронировать' : 'Войти для бронирования';
     showOccupancy(selected);
@@ -98,9 +97,7 @@ async function checkAvailability() {
         }
 
         checkedInterval = interval;
-        availabilityStatus.textContent = rooms.size === roomButtons.length
-            ? ''
-            : 'Для некоторых комнат на плане нет данных. Для пробного запуска используй профиль demo.';
+        availabilityStatus.textContent = '';
         renderRooms();
     } catch {
         if (request !== availabilityRequest) return;
@@ -143,7 +140,7 @@ book.addEventListener('click', async () => {
         return;
     }
     bookingInProgress = true;
-    fields.disabled = true;
+    floorSelect.disabled = fields.disabled = true;
     bookingStatus.textContent = 'Создаём бронь…';
     renderRooms();
     try {
@@ -168,7 +165,7 @@ book.addEventListener('click', async () => {
         bookingStatus.textContent = 'Ответ на бронирование не получен. Проверяем доступность.';
     } finally {
         await checkAvailability();
-        fields.disabled = false;
+        floorSelect.disabled = fields.disabled = false;
         bookingInProgress = false;
         renderRooms();
     }
@@ -255,3 +252,18 @@ function trackPinch(event) {
 for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
     mapViewport.addEventListener(type, trackPinch, {passive: false});
 }
+
+const floorSelect = document.querySelector('#floor-select');
+const planImage = floorPlan.querySelector('img');
+const firstFloorDescription = planImage.alt;
+floorSelect.onchange = () => {
+    const level = floorSelect.value;
+    floorPlan.dataset.level = level;
+    planImage.src = level === '1' ? 'office.svg?v=2' : 'office-second.svg';
+    planImage.alt = level === '1' ? firstFloorDescription : 'Студия слева вверху, библиотека справа внизу. Между ними холл.';
+    for (const button of roomButtons) button.hidden = (button.dataset.level || '1') !== level;
+    selectedName = null;
+    purpose.value = bookingStatus.textContent = '';
+    changeZoom(1 - zoom);
+    renderRooms();
+};

@@ -157,6 +157,11 @@ export function createOffice(canvas) {
     const hub=box(0,.801,-.49,.33,.017,.11,steel,.008);
     hub.castShadow=false;
     const seatGroups=[];
+    const chairs=[];
+    const loungeSeats=[];
+    function seat(anchor, kind, direction, eyeHeight) {
+        return {anchor, kind, direction, eyeHeight};
+    }
     for(const sign of [-1,1]) {
         const group=new T.Group(); scene.add(group); seatGroups.push(group);
         group.add(cylinder(0,.36,-.49,.065,.09,.72,steel));
@@ -170,7 +175,9 @@ export function createOffice(canvas) {
                 spoke.rotation.y=angle;group.add(spoke);
                 group.add(cylinder(Math.sin(angle)*.255,.031,z+Math.cos(angle)*.255,.034,.034,.055,steel));
             }
-            group.add(box(0,.445,z,.53,.105,.49,fabric,.048));
+            const cushion = box(0,.445,z,.53,.105,.49,fabric,.048);
+            group.add(cushion);
+            chairs.push(seat(cushion,'Кресло',side>0 ? 0 : Math.PI,1.18));
             const back=box(0,.696,z+side*.22,.51,.47,.09,fabric,.043);
             back.rotation.x=side*.12;group.add(back);
             for(const arm of [-1,1]){
@@ -189,12 +196,105 @@ export function createOffice(canvas) {
         blade.rotation.set(Math.cos(a)*.44,a,-Math.sin(a)*.44);
         plant.add(blade);
     }
+    // Furniture sets share the room shell and are built once per viewer.
+    function group(...parts) {
+        const result = new T.Group();
+        result.add(...parts);
+        scene.add(result);
+        return result;
+    }
+    const aluminium = material('#acb3ba',{metalness:.58,roughness:.35});
+    const paper = material('#eee7d7');
+    const blue = material('#668694');
+    const coral = material('#c17963');
+    function laptop(x,z) {
+        const lid = group(
+            box(0,.134,0,.40,.267,.018,steel,.008),
+            box(0,.138,.012,.368,.226,.004,blue),
+            box(-.085,.19,.016,.14,.014,.003,paper),
+            box(.04,.12,.016,.16,.058,.003,coral)
+        );
+        lid.rotation.x=-.22;
+        lid.position.z=-.119;
+        const base = group(lid,box(0,.007,0,.412,.014,.27,aluminium,.006),
+            box(0,.017,-.025,.345,.006,.12,steel), box(0,.017,.083,.103,.003,.055,glazing));
+        base.position.set(x,.793,z);
+        return base;
+    }
+    const board = group(box(-1.88,1.28,-.85,1.32,.88,.055,paper,.025));
+    for (const x of [-2.35,-1.41]) board.add(cylinder(x,.48,-.86,.021,.03,.96,steel));
+    for(let i=0;i<8;i++) board.add(box(-2.36+(i%4)*.22,1.47-Math.floor(i/4)*.23,-.816,.15,.14,.009,i%3?coral:blue));
+    const notebooks = group(box(.6,.814,-.61,.35,.039,.24,coral,.012),
+        box(.45,.83,-.22,.26,.065,.18,paper,.01));
+    const presentation = group(laptop(-.54,-.5), box(.68,.807,-.51,.19,.023,.055,steel,.01));
+    const studio = group(laptop(.82,-.44),laptop(-.85,-.54));
+    studio.children[1].rotation.y=Math.PI;
+    const plinth = box(0,.82,-.73,.62,.05,.29,paper);
+    studio.add(plinth,cylinder(-.14,.94,-.73,.085,.085,.20,coral),box(.11,1,-.73,.15,.31,.16,blue));
+    const sofa = box(0,.27,-1.32,1.94,.42,.7,fabric,.14);
+    loungeSeats.push(seat(sofa,'Диван',Math.PI,1.12));
+    const softSeating = group(sofa,
+        box(0,.62,-1.62,1.94,.58,.19,fabric,.092),
+        cylinder(0,.33,-.38,.49,.49,.055,oak),cylinder(0,.15,-.38,.13,.22,.30,steel));
+    for (const x of [-.91,.91]) {
+        softSeating.add(box(x,.49,-1.32,.16,.36,.70,fabric,.075));
+        const pouf = cylinder(x,.22,.48,.32,.28,.44,fabric);
+        softSeating.add(pouf);
+        loungeSeats.push(seat(pouf,'Пуф',Math.atan2(-x,.86),1.04));
+    }
+    const lamp = group(cylinder(-1.75,.03,-1.28,.24,.24,.06,steel),
+        cylinder(-1.75,.84,-1.28,.018,.018,1.65,brass),
+        cylinder(-1.75,1.65,-1.28,.19,.34,.35,paper));
+    const shelf = group();
+    for (const x of [-2.96,-1.18]) shelf.add(box(x,.97,-1.76,.055,1.94,.33,oak));
+    for (let row=0;row<4;row++) {
+        const y=.16+row*.51;
+        shelf.add(box(-2.07,y,-1.76,1.79,.048,.32,oak));
+        for(let i=0;i<11-row;i++) {
+            const h=.21+((i+row)%4)*.045;
+            shelf.add(box(-2.79+i*.115,y+.024+h/2,-1.76,.098,h,.21,[coral,blue,paper][(row+i)%3]));
+        }
+    }
+    const sets = {
+        presentation:[presentation], workshop:[board,notebooks],
+        lounge:[softSeating,lamp], studio:[studio,board], library:[softSeating,shelf]
+    };
+    const projected = new T.Vector3();
+    const direction = new T.Vector3();
+    const ray = new T.Raycaster();
+    const blockers = [];
     return {
         configure(layout) {
+            const active = sets[layout.style];
+            for (const set of Object.values(sets)) {
+                for (const item of set) item.visible = active.includes(item);
+            }
+            const hasDesk = !active.includes(softSeating);
+            for (const part of [desk,hub,...seatGroups]) part.visible = hasDesk;
             desk.scale.x=layout.table;
             seatGroups.forEach((group,i)=>group.position.x=(i?1:-1)*layout.table*.29);
             plant.position.x=layout.plant;fabric.color.set(layout.accent);
             renderer.shadowMap.needsUpdate=true;
+            scene.updateMatrixWorld(true);
+            blockers.length = 0;
+            for (const object of [desk,...active,...seatGroups,plant]) {
+                object.traverseVisible(child => { if (child.isMesh) blockers.push(child); });
+            }
+            return (hasDesk ? chairs : loungeSeats).map(place => {
+                const center = place.anchor.getWorldPosition(new T.Vector3());
+                const marker = center.clone();
+                marker.y = place.kind === 'Кресло' ? .86 : .64;
+                return {kind:place.kind, marker, yaw:place.direction, eye:[center.x,place.eyeHeight,center.z]};
+            });
+        },
+        projectSeat(place) {
+            projected.copy(place.marker).project(camera);
+            if (Math.abs(projected.x)>=1 || Math.abs(projected.y)>=1 || Math.abs(projected.z)>=1) return null;
+            direction.subVectors(place.marker,camera.position);
+            ray.far = direction.length()-.04;
+            ray.set(camera.position,direction.normalize());
+            if (ray.intersectObjects(blockers,false).length) return null;
+            return {left:(projected.x+1)*50, top:(1-projected.y)*50};
         },
         render(eye,yaw,pitch) {
             const w=canvas.clientWidth,h=canvas.clientHeight;

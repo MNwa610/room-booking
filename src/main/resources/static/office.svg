@@ -18,7 +18,11 @@
   </g>
   <g><use href="#door" x="214" y="144"/><use href="#door" x="478" y="144"/><use href="#door" x="745" y="144"/><g transform="translate(485 196) scale(1 -1)"><use href="#door"/></g><g transform="translate(719 196) scale(1 -1)"><use href="#door"/></g></g>
   <use href="#window" x="72" y="4"/><use href="#window" x="344" y="4"/><use href="#window" x="608" y="4"/><use href="#window" x="75" y="388"/><use href="#window" x="310" y="388"/>
-  <use href="#meeting" x="130" y="54"/><use href="#meeting" transform="translate(399 54) scale(.8 1)"/><use href="#meeting" transform="translate(664 54) scale(1.2 1)"/>
+  <use href="#meeting" x="130" y="54"/><use href="#meeting" transform="translate(399 54) scale(.8 1)"/><g fill="#99a6ae" stroke="#667784">
+    <rect x="620" y="24" width="86" height="27" rx="7"/><path d="M624 31h78"/>
+    <circle cx="628" cy="86" r="10"/><circle cx="696" cy="86" r="10"/>
+    <ellipse cx="662" cy="65" rx="24" ry="12" fill="#bca586"/>
+  </g>
   <use href="#pod" x="101" y="297"/><use href="#pod" x="268" y="297"/><use href="#pod" x="434" y="297"/>
   <g fill="#a5a4a3" stroke="#757981"><rect x="585" y="218" width="70" height="26" rx="7"/><rect x="585" y="245" width="23" height="48" rx="6"/><rect x="670" y="265" width="30" height="35" rx="7"/></g>
   <circle cx="640" cy="270" r="17" fill="#d9d3c9" stroke="#999a9b"/>

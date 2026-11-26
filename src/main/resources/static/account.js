@@ -152,14 +152,14 @@ meetingForm.onsubmit = async event => {
     }
 };
 
-async function loadMeetings() {
+async function loadMeetings(panelReady) {
     const owner = employee;
     const upcoming = document.querySelector('#upcoming');
     const history = document.querySelector('#history');
     upcoming.textContent = history.textContent = 'Загрузка…';
     try {
-        const meetings = await accountRequest('bookings/mine');
-        if (employee !== owner) return;
+        const [meetings] = await Promise.all([accountRequest('bookings/mine'), panelReady]);
+        if (employee !== owner || !profileDialog.open) return;
         const now = Date.now();
         const ended = m => Boolean(m.cancelledAt) || new Date(m.endTime).getTime() <= now;
         for (const [list, items] of [[upcoming, meetings.filter(m => !ended(m))], [history, meetings.filter(ended).sort((a, b) => Date.parse(b.cancelledAt || b.endTime) - Date.parse(a.cancelledAt || a.endTime))]]) {
@@ -204,14 +204,38 @@ function openAccount(guestMode = 'login') {
 
 loginButton.onclick = () => openAccount();
 profileButton.onclick = openProfile;
+let profileClosing = false;
+async function closeProfile() {
+    if (profileClosing || !profileDialog.open) return;
+    profileClosing = true;
+    const panel = profileDialog.querySelector('.dialog-panel');
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        const slide = panel.animate([
+            {transform: getComputedStyle(panel).transform},
+            {transform: 'translate3d(100%,0,0)'}
+        ], {duration: 320, easing: 'cubic-bezier(.4,0,.65,1)', fill: 'forwards'});
+        await slide.finished.catch(() => {});
+        profileDialog.close();
+        slide.cancel();
+    } else {
+        profileDialog.close();
+    }
+    profileClosing = false;
+}
+
+profileDialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    closeProfile();
+});
 for (const dialog of [accountDialog, profileDialog, meetingDialog]) {
+    const dismiss = dialog === profileDialog ? closeProfile : () => dialog.close();
     let startedOutside = false;
     dialog.addEventListener('pointerdown', event => { startedOutside = event.target === dialog; });
     dialog.addEventListener('click', event => {
-        if (startedOutside && event.target === dialog) dialog.close();
+        if (startedOutside && event.target === dialog) dismiss();
         startedOutside = false;
     });
-    dialog.querySelector('.close-dialog').onclick = () => dialog.close();
+    dialog.querySelector('.close-dialog').onclick = dismiss;
 }
 for (const button of authModes.children) {
     button.onclick = () => {
@@ -290,7 +314,9 @@ function openProfile() {
     renderAvatar();
     profileMessage.textContent = '';
     profileDialog.showModal();
-    loadMeetings();
+    const panel = profileDialog.querySelector('.dialog-panel');
+    const panelReady = Promise.allSettled(panel.getAnimations().map(animation => animation.finished));
+    loadMeetings(panelReady);
 }
 
 document.querySelector('#choose-avatar').onclick = () => avatarFile.click();
@@ -351,7 +377,7 @@ document.querySelector('#logout').onclick = async () => {
     try {
         await accountRequest('account/logout', 'POST', {});
         setEmployee(null);
-        profileDialog.close();
+        await closeProfile();
         loginButton.focus();
         document.querySelector('#upcoming').replaceChildren();
         document.querySelector('#history').replaceChildren();
