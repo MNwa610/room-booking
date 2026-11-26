@@ -54,6 +54,7 @@ function renderRooms() {
     }
 
     const selected = rooms.get(selectedName);
+    document.querySelector('#view-office').hidden = !selected;
     roomTitle.textContent = selected?.name ?? 'Выбери комнату';
     roomDetails.textContent = selected
         ? (selected.available ? 'Свободна на выбранное время.' : 'Занята на выбранное время.')

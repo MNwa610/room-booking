@@ -317,3 +317,11 @@ dialog h2[tabindex="-1"]:focus { outline: none; }
 
 .map-scroll { touch-action: pan-x pan-y; }
 .meeting-status { color: #ffb2a5; font-size: .85rem; }
+
+#office-view .office-panel { width: min(1060px, 96vw); max-height: 95dvh; padding: 0; overflow: auto; }
+.office-panel header, .office-panel footer { display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.7rem 1rem; }
+.office-panel header h2 { padding:0; }
+.office-panel canvas { display:block; width:100%; height:min(62dvh, 600px); background:#b6c6c9; touch-action:none; cursor:grab; }
+.office-panel canvas:active { cursor:grabbing; }
+.office-panel footer span { font-size:.85rem; color:var(--muted); }
+.office-panel button { flex:none; }
